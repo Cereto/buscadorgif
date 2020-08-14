@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Tarefas</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.1/semantic.min.css" />
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <style>
+    ul {
+      list-style-type: none;
+      padding-left: 0px;
+    }
+
+    body {
+      font-family: 'Archivo Narrow', sans-serif;
+      background-image: url("stars.jpg");
+    }
+
+    ul {
+      margin-top: 5px;
+    }
+  </style>
+
+
+</head>
+
+<body>
+
+  <div id="appTarefas" class="ui container center aligned">
+
+    <br />
+    <br />
+    <div>
+
+      <div class="ui icon input">
+        <input v-on:keyup.enter="listSearch" type="text" name="search" placeholder="Pesquisar gif..."
+          v-model="search_gif">
+        <i class="search icon"></i>
+      </div>
+      <button class="ui green button" v-on:click="listSearch">Pesquisar</button>
+      <button class="ui secondary button" v-on:click="openLibrary">Gifs salvos capazes de matar o Senhor do Mal</button>
+    </div>
+    <br />
+    <br />
+    <br />
+    <br />
+
+    <div v-if="library">
+
+      <div v-if="gifs_saved.length < 1">
+        <div class="ui cards centered">
+          <div class="card cen">
+            <div class="content">
+              <div class="header">Nenhum GIF salvo!!!</div>
+              <div class="description">
+                Pesquise Gifs e salve os capazes de matar o Senhor do Mal!!
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="ui three column centered grid">
+        <div v-for="data in gifs_saved" v-bind:key="data">
+          <div class="ui card">
+            <div class="image">
+              <img class="brick-img" :src="'https://media.giphy.com/media/' + data.id + '/giphy.gif'" />
+            </div>
+            <div class="content">
+              <a class="header">{{data.title}}</a>
+              <div class="meta">
+                <span class="date">Data de publicação: {{ConverterData(data.import_datetime)}}</span>
+              </div>
+            </div>
+            <div class="extra content">
+              <button class="ui red button" v-on:click="deleteGif(data)">
+                <i class="trash alternate icon"></i>
+                Deletar Gif
+              </button>
+            </div>
+          </div>
+          <br />
+          <br />
+        </div>
+      </div>
+
+    </div>
+
+
+
+    <!--========================================================================================-->
+    <div v-else>
+      <div class="ui three column centered grid">
+        <div v-for="data in gifs" v-bind:key="data">
+          <div class="ui card">
+            <div class="image">
+              <img class="brick-img" :src="'https://media.giphy.com/media/' + data.id + '/giphy.gif'" />
+            </div>
+            <div class="content">
+              <a class="header">{{data.title}}</a>
+              <div class="meta">
+                <span class="date">Data de publicação: {{ConverterData(data.import_datetime)}}</span>
+              </div>
+            </div>
+
+            <div class="extra content" v-if="vereficaSalvo(data.id)">
+              <button class="ui green button">
+                <i class="check circle icon"></i>
+                Salvo
+              </button>
+            </div>
+
+            <div v-else class="extra content">
+              <button class="ui primary button" v-on:click="saveGif(data)">
+                <i class="save icon"></i>
+                Salvar Gif
+              </button>
+            </div>
+
+          </div>
+          <br />
+          <br />
+        </div>
+      </div>
+    </div>
+
+
+    <!--========================================================================================-->
+
+
+  </div>
+
+  <script>
+
+    new Vue({
+      el: '#appTarefas',
+      data: {
+        API_KEY: 'J1TaORwP8k7eIyP3jAM41m8N2AvJNj1r',
+        search: 'http://api.giphy.com/v1/gifs/search',
+        limit: 25,
+        offset: 0,
+        search_gif: '',
+        search_gif_old: '',
+        gifs: [],
+        bottom: false,
+        gifs_saved: [],
+        gifs_saved_id: [],
+        library: false,
+      },
+
+      methods: {
+
+
+        searchTrends(gifs) {
+          this.library = false;
+
+          let api_key = this.API_KEY;
+          let endpoint = this.search;
+          let limit = this.limit;
+          let offset = this.offset;
+          let search_gif = this.search_gif;
+
+          fetch(
+            `${endpoint}?api_key=${api_key}&q=${search_gif}&limit=${limit}&offset=${offset}&rating=0&lang=pt`,
+            {
+              method: "GET",
+            }
+          )
+            .then((resp) => {
+              return resp.json();
+            })
+            .then((obj) => {
+              if (this.gifs.length > 20 && this.search_gif === this.search_gif_old) {
+                for (i = 0; i < 24; i++) {
+                  if (this.gifs.indexOf(obj.data[i]) === -1) {
+                    this.gifs.push(obj.data[i]);
+                  } else {
+                    console.log("repetido");
+                  }
+                }
+              } else {
+                this.offset = 0;
+                this.search_gif_old = this.search_gif;
+                this.gifs = obj.data;
+              }
+              if (this.bottomVisible()) {
+                this.offset = this.offset + 26;
+              }
+            });
+        },
+
+        saveGif(gif_id) {
+          console.log("salvo");
+          if (this.gifs_saved.indexOf(gif_id) === -1) {
+            this.gifs_saved.push(gif_id);
+          } else {
+            console.log("id repetido")
+          }
+          for (i = 0; i < this.gifs_saved.length; i++) {
+            if (this.gifs_saved_id.indexOf(this.gifs_saved[i].id) === -1) {
+              this.gifs_saved_id.push(this.gifs_saved[i].id);
+            }
+          }
+        },
+
+        deleteGif(gif_id) {
+          var index = this.gifs_saved.indexOf(gif_id);
+          this.gifs_saved.splice(index, 1);
+
+          var index2 = this.gifs_saved_id.indexOf(gif_id.id);
+          this.gifs_saved_id.splice(index, 1);
+
+        },
+
+        vereficaSalvo(data) {
+          if (this.gifs_saved_id.indexOf(data) != -1) {
+            return true;
+          } else {
+            return false;
+          }
+        },
+
+
+
+        openLibrary() {
+          this.library = true;
+          this.limit = 25;
+          this.offset = 0;
+          this.search_gif = '';
+          this.search_gif_old = '';
+          this.gifs = [];
+        },
+
+        listSearch() {
+
+          this.limit = 25;
+          this.offset = 0;
+          this.search_gif_old = '';
+          this.gifs = [];
+          this.searchTrends();
+        },
+
+        ConverterData: function (data) {
+          var split = data.split(' ');
+          var split = split[0].split('-');
+          data_formatada = split[2] + "/" + split[1] + "/" + split[0];
+          return data_formatada;
+        },
+
+        bottomVisible() {
+          const scrollY = window.scrollY
+          const visible = document.documentElement.clientHeight
+          const pageHeight = document.documentElement.scrollHeight
+          const bottomOfPage = visible + scrollY >= pageHeight
+          return bottomOfPage || pageHeight < visible
+        }
+
+      },
+      watch: {
+        bottom(bottom) {
+          console.log(this.library);
+          if (bottom) {
+            if (this.library == false) {
+              // this.offset = this.offset + 25;
+              this.searchTrends();
+            } else {
+              console.log("In library");
+            }
+          }
+        }
+      },
+      created() {
+        window.addEventListener('scroll', () => {
+          this.bottom = this.bottomVisible()
+        })
+      }
+
+
+    });
+
+  </script>
+
+</body>
+
+</html>
